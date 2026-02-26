@@ -25,6 +25,20 @@ class FriendViewModel(
             initialValue = emptyList()
         )
 
+    private val _selectedFriend = MutableStateFlow<Friend?>(null)
+    val selectedFriend: StateFlow<Friend?> = _selectedFriend.asStateFlow()
+
+    private val _isLoadingSelectedFriend = MutableStateFlow(false)
+    val isLoadingSelectedFriend: StateFlow<Boolean> = _isLoadingSelectedFriend.asStateFlow()
+
+    fun loadFriendById(id: Int) {
+        viewModelScope.launch {
+            _isLoadingSelectedFriend.value = true
+            _selectedFriend.value = friendRepository.getFriendById(id)
+            _isLoadingSelectedFriend.value = false
+        }
+    }
+
     private val _aiQuestionsForDialog = MutableStateFlow<List<String>>(emptyList())
     val aiQuestionsForDialog: StateFlow<List<String>> = _aiQuestionsForDialog.asStateFlow()
 

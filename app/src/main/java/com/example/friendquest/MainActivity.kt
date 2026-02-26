@@ -9,9 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,7 +19,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.friendquest.data.local.AppDatabase
 import com.example.friendquest.data.local.LocalFriendRepository
-import com.example.friendquest.domain.Friend
 import com.example.friendquest.ui.AddEditFriendScreen
 import com.example.friendquest.ui.FriendDetailScreen
 import com.example.friendquest.ui.FriendListScreen
@@ -90,24 +86,20 @@ fun AppNavigation(viewModel: FriendViewModel) {
             })
         ) { backStackEntry ->
             val friendId = backStackEntry.arguments?.getInt("friendId")
-            var friendToEdit: Friend? by remember { mutableStateOf(null) }
-            var isLoadingData by remember { mutableStateOf(false) }
+            val friendToEdit by viewModel.selectedFriend.collectAsState()
+            val isLoadingData by viewModel.isLoadingSelectedFriend.collectAsState()
 
-            if (friendId != null && friendId != -1) {
-                LaunchedEffect(friendId) {
-                    isLoadingData = true
-                    friendToEdit = viewModel.getFriendById(friendId)
-                    isLoadingData = false
-                }
+            LaunchedEffect(friendId) {
+                if (friendId != null && friendId != -1) viewModel.loadFriendById(friendId)
             }
-            
+
             if (!(friendId != null && friendId != -1 && isLoadingData)) {
-                 AddEditFriendScreen(
+                AddEditFriendScreen(
                     friend = if (friendId == -1) null else friendToEdit,
                     onSaveClicked = { friendDetails ->
-                        if (friendDetails.id == 0) { 
+                        if (friendDetails.id == 0) {
                             viewModel.addFriend(friendDetails)
-                        } else { 
+                        } else {
                             viewModel.updateFriend(friendDetails)
                         }
                         navController.popBackStack(Routes.FRIEND_LIST, inclusive = false)
@@ -124,15 +116,11 @@ fun AppNavigation(viewModel: FriendViewModel) {
             arguments = listOf(navArgument("friendId") { type = NavType.IntType })
         ) { backStackEntry ->
             val friendId = backStackEntry.arguments?.getInt("friendId")
-            var friend: Friend? by remember { mutableStateOf(null) }
-            var isLoadingData by remember { mutableStateOf(true) }
+            val friend by viewModel.selectedFriend.collectAsState()
+            val isLoadingData by viewModel.isLoadingSelectedFriend.collectAsState()
 
             LaunchedEffect(friendId) {
-                if (friendId != null) {
-                    isLoadingData = true
-                    friend = viewModel.getFriendById(friendId)
-                    isLoadingData = false
-                }
+                if (friendId != null) viewModel.loadFriendById(friendId)
             }
 
             if (isLoadingData) {
@@ -141,8 +129,8 @@ fun AppNavigation(viewModel: FriendViewModel) {
                 FriendDetailScreen(
                     friend = friend!!,
                     aiQuestionsForDialog = aiQuestionsForDialog,
-                    isLoadingAiQuestions = isLoadingAiQuestions, 
-                    aiQuestionsError = aiQuestionsError,         
+                    isLoadingAiQuestions = isLoadingAiQuestions,
+                    aiQuestionsError = aiQuestionsError,
                     onNavigateUp = { navController.popBackStack() },
                     onEditClicked = { f ->
                         navController.navigate(Routes.addEditFriendRoute(f.id))
@@ -153,22 +141,18 @@ fun AppNavigation(viewModel: FriendViewModel) {
                     },
                     onGenerateAiQuestions = viewModel::generateAiQuestionsForFriend,
                     onClearAiQuestionsDialog = viewModel::clearAiQuestionsDialog,
-                    onClearAiError = viewModel::clearAiError, 
+                    onClearAiError = viewModel::clearAiError,
                     onSaveAiQuestions = { id, questions ->
                         viewModel.saveAiQuestionsToFriend(id, questions)
-                        if (friendId != null) {
-                            friend = viewModel.getFriendById(friendId)
-                        }
+                        if (friendId != null) viewModel.loadFriendById(friendId)
                     },
                     onDeleteSavedQuestion = { id, question ->
                         viewModel.deleteSavedAiQuestion(id, question)
-                        if (friendId != null) {
-                            friend = viewModel.getFriendById(friendId)
-                        }
+                        if (friendId != null) viewModel.loadFriendById(friendId)
                     }
                 )
             } else {
-                LaunchedEffect(Unit) { navController.popBackStack() } 
+                LaunchedEffect(Unit) { navController.popBackStack() }
             }
         }
     }
